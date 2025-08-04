@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WoW Boar Quest Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+        }
+        .container {
+            background-color: #34495e;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .login-form, .tracker {
+            text-align: center;
+        }
+        .hidden {
+            display: none;
+        }
+        input[type="password"] {
+            padding: 10px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            width: 200px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #e74c3c;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #c0392b;
+        }
+        .counter {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #f39c12;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background-color: #95a5a6;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #27ae60;
+            transition: width 0.3s ease;
+        }
+        .quest-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #f1c40f;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .controls button {
+            font-size: 24px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="login" class="login-form">
+            <h1>🐗 WoW Boar Quest Tracker</h1>
+            <p>Enter password to access your quest progress:</p>
+            <input type="password" id="password" placeholder="Password">
+            <br>
+            <button onclick="login()">Login</button>
+            <div id="error" style="color: #e74c3c; margin-top: 10px;"></div>
+        </div>
+
+        <div id="tracker" class="tracker hidden">
+            <div class="quest-title">🎯 Kill 100 Boars</div>
+            <div class="counter" id="counter">0</div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress"></div>
+            </div>
+            <div>Progress: <span id="percentage">0</span>% Complete</div>
+
+            <div class="controls">
+                <button onclick="incrementCount()">+</button>
+            </div>
+
+            <button onclick="logout()" style="background-color: #95a5a6; margin-top: 20px;">Logout</button>
+        </div>
+    </div>
+
+    <script>
+        const PASSWORD = 'boarhunter123';
+        let currentCount = 0;
+        let isAuthenticated = false;
+
+        async function login() {
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+
+            if (password === PASSWORD) {
+                isAuthenticated = true;
+                document.getElementById('login').classList.add('hidden');
+                document.getElementById('tracker').classList.remove('hidden');
+                errorDiv.textContent = '';
+                await loadProgress();
+            } else {
+                errorDiv.textContent = 'Invalid password!';
+            }
+        }
+
+        function logout() {
+            isAuthenticated = false;
+            document.getElementById('login').classList.remove('hidden');
+            document.getElementById('tracker').classList.add('hidden');
+            document.getElementById('password').value = '';
+        }
+
+        async function loadProgress() {
+            if (!isAuthenticated) return;
+
+            try {
+                const response = await fetch('/api/progress');
+                const data = await response.json();
+                currentCount = data.count || 0;
+                updateDisplay();
+            } catch (error) {
+                console.error('Failed to load progress:', error);
+            }
+        }
+
+        async function saveProgress() {
+            if (!isAuthenticated) return;
+
+            try {
+                await fetch('/api/progress', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ count: currentCount })
+                });
+            } catch (error) {
+                console.error('Failed to save progress:', error);
+            }
+        }
+
+        async function incrementCount() {
+            if (!isAuthenticated) return;
+
+            if (currentCount < 100) {
+                currentCount++;
+                updateDisplay();
+                await saveProgress();
+            }
+        }
+
+
+        function updateDisplay() {
+            document.getElementById('counter').textContent = currentCount;
+            const percentage = Math.min((currentCount / 100) * 100, 100);
+            document.getElementById('percentage').textContent = percentage.toFixed(0);
+            document.getElementById('progress').style.width = percentage + '%';
+
+            if (currentCount >= 100) {
+                document.getElementById('counter').style.color = '#27ae60';
+                document.querySelector('.quest-title').textContent = '🎉 Quest Complete! 🎉';
+            } else {
+                document.getElementById('counter').style.color = '#f39c12';
+                document.querySelector('.quest-title').textContent = '🎯 Kill 100 Boars';
+            }
+        }
+
+        document.getElementById('password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                login();
+            }
+        });
+    </script>
+</body>
+</html>
